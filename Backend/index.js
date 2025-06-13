@@ -10,7 +10,7 @@ app.use(cors());
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:5000"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://admin-view-sdm.vercel.app http://localhost:5000"
   );
   next();
 });
@@ -24,27 +24,31 @@ app.get('/alldata', async (req, res) => {
   try {
     const users = await Details.find();
     res.json(users);
-
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch data'+ err.message });
+    console.error('Error fetching all data:', err);
+    res.status(500).json({ error: 'Failed to fetch data: ' + err.message });
   }
 });
 
 app.get('/specificdata', async (req, res) => {
-    const type = req.query.type; // Get the type from query parameters
+  const type = req.query.type;
   try {
     const users = await Details.find({ service: type });
     res.json(users);
-
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch data'+ err.message });
+    console.error('Error fetching specific data:', err);
+    res.status(500).json({ error: 'Failed to fetch data: ' + err.message });
   }
 });
 
-// New endpoint for exporting data
+// Endpoint for exporting data
 app.get('/export-data', async (req, res) => {
   try {
-    const { interval } = req.query; // 'daily', 'weekly', or 'monthly'
+    const { interval } = req.query;
+    if (!interval || !['daily', 'weekly', 'monthly'].includes(interval)) {
+      return res.status(400).json({ error: 'Invalid interval specified' });
+    }
+
     const now = new Date();
     let startDate;
 
@@ -60,12 +64,16 @@ app.get('/export-data', async (req, res) => {
         startDate = new Date(now.setMonth(now.getMonth() - 1));
         break;
       default:
-        startDate = new Date(0); // All time
+        startDate = new Date(0);
     }
 
     const data = await Details.find({
       requestDate: { $gte: startDate }
     });
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'No data found for the specified interval' });
+    }
 
     // Set headers for CSV download
     res.setHeader('Content-Type', 'text/csv');
@@ -77,19 +85,26 @@ app.get('/export-data', async (req, res) => {
       ['Name', 'Email', 'Phone', 'Service', 'Message', 'Request Date'].join(','),
       // Data rows
       ...data.map(item => [
-        `"${item.name}"`,
-        `"${item.email}"`,
-        `"${item.number}"`,
-        `"${item.service}"`,
-        `"${item.message.replace(/"/g, '""')}"`,
+        `"${(item.name || '').replace(/"/g, '""')}"`,
+        `"${(item.email || '').replace(/"/g, '""')}"`,
+        `"${(item.number || '').replace(/"/g, '""')}"`,
+        `"${(item.service || '').replace(/"/g, '""')}"`,
+        `"${(item.message || '').replace(/"/g, '""')}"`,
         `"${new Date(item.requestDate).toISOString()}"`
       ].join(','))
     ].join('\n');
 
     res.send(csvContent);
   } catch (err) {
+    console.error('Export error:', err);
     res.status(500).json({ error: 'Failed to export data: ' + err.message });
   }
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 app.listen(PORT, () => {
