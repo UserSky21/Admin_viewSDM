@@ -87,10 +87,13 @@ export const Dashboard = () => {
    const handleExport = async (interval) => {
     try {
       setIsExporting(true);
+      setError(null);
       const response = await fetch(`http://localhost:5000/export-data?interval=${interval}`);
       
       if (!response.ok) {
         throw new Error('Export failed');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || `Export failed with status: ${response.status}`);
       }
 
       // Get the blob from the response
@@ -109,8 +112,12 @@ export const Dashboard = () => {
       document.body.removeChild(a);
     } catch (err) {
       setError('Failed to export data');
+      console.error('Export error:', err);
+      setError(err.message || 'Failed to export data. Please try again.');
     } finally {
       setIsExporting(false);
+      // Hide the dropdown after export attempt
+      document.getElementById('exportDropdown').classList.add('hidden');
     }
   };
 
@@ -131,6 +138,18 @@ export const Dashboard = () => {
             <div className="relative">
               <button
                 onClick={() => document.getElementById('exportDropdown').classList.toggle('hidden')}
+                onClick={() => {
+                  const dropdown = document.getElementById('exportDropdown');
+                  dropdown.classList.toggle('hidden');
+                  // Close dropdown when clicking outside
+                  const handleClickOutside = (event) => {
+                    if (!dropdown.contains(event.target) && !event.target.closest('button')) {
+                      dropdown.classList.add('hidden');
+                      document.removeEventListener('click', handleClickOutside);
+                    }
+                  };
+                  document.addEventListener('click', handleClickOutside);
+                }}
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition flex items-center"
                 disabled={isExporting}
               >
@@ -174,6 +193,13 @@ export const Dashboard = () => {
                 </div>
               </div>
             </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="fixed top-4 right-4 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300 px-4 py-2 rounded-lg shadow-lg z-50">
+                {error}
+              </div>
+            )}
             <button
               onClick={toggleDarkMode}
               className="p-2 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-100 dark:hover:bg-gray-600 transition"
