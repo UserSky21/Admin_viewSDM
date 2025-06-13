@@ -1,11 +1,36 @@
 const mongoose = require('mongoose');
 const MONGODB_URI = 'mongodb+srv://SDM:SDM123@cluster0.itxap30.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
-// Connect to MongoDB
-mongoose.connect(MONGODB_URI).then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// Configure mongoose options
+mongoose.set('strictQuery', false);
 
-// Define a schema and model
+// Connect to MongoDB with improved error handling
+const connectDB = async () => {
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('MongoDB connected successfully');
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    process.exit(1); // Exit process with failure
+  }
+};
+
+// Handle connection events
+mongoose.connection.on('error', err => {
+  console.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected');
+});
+
+// Connect to database
+connectDB();
+
+// Define schema and model
 const details = new mongoose.Schema({
   name: String,
   email: String,
@@ -13,10 +38,9 @@ const details = new mongoose.Schema({
   service: String,
   message: String,
   requestDate: {
-  type: Date,
-  default: Date.now
-}
-
+    type: Date,
+    default: Date.now
+  }
 });
 
 const Details = mongoose.model('Details', details);
