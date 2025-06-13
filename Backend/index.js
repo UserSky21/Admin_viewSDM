@@ -13,7 +13,7 @@ app.use((req, res, next) => {
     "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:5000"
   );
   next();
-});   
+});
 
 app.use(express.json());
 
@@ -30,19 +30,16 @@ app.get('/alldata', async (req, res) => {
   }
 });
 
-
-
-// API endpoint to get data
-app.get('/alldata', async (req, res) => {
+app.get('/specificdata', async (req, res) => {
+    const type = req.query.type; // Get the type from query parameters
   try {
-    const users = await Details.find();
+    const users = await Details.find({ service: type });
     res.json(users);
 
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch data'+ err.message });
   }
 });
-
 
 // New endpoint for exporting data
 app.get('/export-data', async (req, res) => {
@@ -92,21 +89,6 @@ app.get('/export-data', async (req, res) => {
     res.send(csvContent);
   } catch (err) {
     res.status(500).json({ error: 'Failed to export data: ' + err.message });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
-
-app.get('/specificdata', async (req, res) => {
-    const type = req.query.type; // Get the type from query parameters
-  try {
-    const users = await Details.find({ service: type });
-    res.json(users);
-
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch data'+ err.message });
   }
 });
 
