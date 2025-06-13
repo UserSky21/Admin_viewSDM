@@ -4,7 +4,8 @@ const {Details} = require('./model'); // Adjust the path as necessary
 
 const app = express();      
 const PORT = 5000;
-app.use(cors());
+app.use(cors());   
+
 app.use(express.json());
 
 // Replace with your MongoDB connection string
@@ -19,15 +20,8 @@ app.get('/alldata', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch data'+ err.message });
   }
 });
-const express = require('express');
-const cors = require('cors');
-const {Details} = require('./model'); // Adjust the path as necessary
 
-const app = express();      
-const PORT = 5000;
-app.use(cors());
 
-// Replace with your MongoDB connection string
 
 // API endpoint to get data
 app.get('/alldata', async (req, res) => {
@@ -40,16 +34,6 @@ app.get('/alldata', async (req, res) => {
   }
 });
 
-app.get('/specificdata', async (req, res) => {
-    const type = req.query.type; // Get the type from query parameters
-  try {
-    const users = await Details.find({ service: type });
-    res.json(users);
-
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch data'+ err.message });
-  }
-});
 
 // New endpoint for exporting data
 app.get('/export-data', async (req, res) => {
