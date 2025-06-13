@@ -16,6 +16,7 @@ export const Dashboard = () => {
       window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   const [selectedMessage, setSelectedMessage] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     // Apply dark mode to document
@@ -83,6 +84,36 @@ export const Dashboard = () => {
     }).format(date);
   };
 
+   const handleExport = async (interval) => {
+    try {
+      setIsExporting(true);
+      const response = await fetch(`http://localhost:5000/export-data?interval=${interval}`);
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob();
+      
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `export-${interval}-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      setError('Failed to export data');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -96,6 +127,53 @@ export const Dashboard = () => {
           </div>
 
           <div className="flex items-center mt-4 md:mt-0 space-x-4">
+            {/* Export Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => document.getElementById('exportDropdown').classList.toggle('hidden')}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition flex items-center"
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export Data
+                  </>
+                )}
+              </button>
+              <div id="exportDropdown" className="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+                <div className="py-1">
+                  <button
+                    onClick={() => handleExport('daily')}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Export Daily Data
+                  </button>
+                  <button
+                    onClick={() => handleExport('weekly')}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Export Weekly Data
+                  </button>
+                  <button
+                    onClick={() => handleExport('monthly')}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Export Monthly Data
+                  </button>
+                </div>
+              </div>
+            </div>
             <button
               onClick={toggleDarkMode}
               className="p-2 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-100 dark:hover:bg-gray-600 transition"
