@@ -4,7 +4,16 @@ const {Details} = require('./model'); // Adjust the path as necessary
 
 const app = express();      
 const PORT = 5000;
-app.use(cors());   
+
+// Configure CORS and CSP headers
+app.use(cors());
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:5000"
+  );
+  next();
+});   
 
 app.use(express.json());
 
