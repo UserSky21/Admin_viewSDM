@@ -84,14 +84,14 @@ export const Dashboard = () => {
     }).format(date);
   };
 
-   const handleExport = async (interval) => {
+  const handleExport = async (interval) => {
     try {
       setIsExporting(true);
-      setError(null);
+      setError(null); // Clear any previous errors
+      
       const response = await fetch(`http://localhost:5000/export-data?interval=${interval}`);
       
       if (!response.ok) {
-        throw new Error('Export failed');
         const errorData = await response.json().catch(() => null);
         throw new Error(errorData?.error || `Export failed with status: ${response.status}`);
       }
@@ -99,19 +99,23 @@ export const Dashboard = () => {
       // Get the blob from the response
       const blob = await response.blob();
       
-      // Create a download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `export-${interval}-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
+      // Create a download link using a more secure approach
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'text/csv' }));
+      const link = document.createElement('a');
+      link.style.display = 'none';
+      link.href = url;
+      link.setAttribute('download', `export-${interval}-${new Date().toISOString().split('T')[0]}.csv`);
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
       
       // Cleanup
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
     } catch (err) {
-      setError('Failed to export data');
       console.error('Export error:', err);
       setError(err.message || 'Failed to export data. Please try again.');
     } finally {
@@ -137,7 +141,6 @@ export const Dashboard = () => {
             {/* Export Dropdown */}
             <div className="relative">
               <button
-                onClick={() => document.getElementById('exportDropdown').classList.toggle('hidden')}
                 onClick={() => {
                   const dropdown = document.getElementById('exportDropdown');
                   dropdown.classList.toggle('hidden');
@@ -200,6 +203,7 @@ export const Dashboard = () => {
                 {error}
               </div>
             )}
+
             <button
               onClick={toggleDarkMode}
               className="p-2 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-100 dark:hover:bg-gray-600 transition"
