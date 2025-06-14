@@ -84,43 +84,70 @@ export const Dashboard = () => {
     }).format(date);
   };
 
-  const handleExport = async (interval) => {
+  const exportToCSV = (data, filename = 'requests.csv') => {
+    if (!data.length) return;
+
+    const headers = ['Name', 'Email', 'Phone', 'Service', 'Message', 'Request Date'];
+    const csvRows = [headers.join(',')];
+
+    data.forEach(row => {
+      const values = [
+        `"${(row.name || '').replace(/"/g, '""')}"`,
+        `"${(row.email || '').replace(/"/g, '""')}"`,
+        `"${(row.phone || '').replace(/"/g, '""')}"`,
+        `"${(row.service || '').replace(/"/g, '""')}"`,
+        `"${(row.message || '').replace(/"/g, '""')}"`,
+        `"${formatDate(row.requestDate)}"`
+      ];
+      csvRows.push(values.join(','));
+    });
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExport = (interval) => {
     try {
       setIsExporting(true);
-      setError(null); // Clear any previous errors
-      
-      const response = await fetch(`http://localhost:5000/export-data?interval=${interval}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || `Export failed with status: ${response.status}`);
+      setError(null);
+
+      let filteredData = [...requests];
+      const now = new Date();
+
+      // Filter data based on interval
+      switch (interval) {
+        case 'daily':
+          filteredData = filteredData.filter(item => {
+            const itemDate = new Date(item.requestDate);
+            return itemDate.toDateString() === now.toDateString();
+          });
+          break;
+        case 'weekly':
+          const weekAgo = new Date(now.setDate(now.getDate() - 7));
+          filteredData = filteredData.filter(item => new Date(item.requestDate) >= weekAgo);
+          break;
+        case 'monthly':
+          const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
+          filteredData = filteredData.filter(item => new Date(item.requestDate) >= monthAgo);
+          break;
       }
 
-      // Get the blob from the response
-      const blob = await response.blob();
-      
-      // Create a download link using a more secure approach
-      const url = window.URL.createObjectURL(new Blob([blob], { type: 'text/csv' }));
-      const link = document.createElement('a');
-      link.style.display = 'none';
-      link.href = url;
-      link.setAttribute('download', `export-${interval}-${new Date().toISOString().split('T')[0]}.csv`);
-      
-      // Append to body, click, and remove
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup
-      setTimeout(() => {
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }, 100);
+      if (filteredData.length === 0) {
+        setError('No data available for the selected period');
+        return;
+      }
+
+      exportToCSV(filteredData, `export-${interval}-${new Date().toISOString().split('T')[0]}.csv`);
     } catch (err) {
       console.error('Export error:', err);
-      setError(err.message || 'Failed to export data. Please try again.');
+      setError('Failed to export data. Please try again.');
     } finally {
       setIsExporting(false);
-      // Hide the dropdown after export attempt
       document.getElementById('exportDropdown').classList.add('hidden');
     }
   };
